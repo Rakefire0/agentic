@@ -23,8 +23,8 @@ from acp_sdk.server import Context, RunYield, RunYieldResume, Server
 # Load environment variables
 load_dotenv()
 
-# Create server instance with host binding
-server = Server(host="0.0.0.0", port=8000)
+# Create server instance
+server = Server()
 
 # Define agent metadata
 AGENT_METADATA = {
@@ -341,4 +341,5 @@ async def health_check(
     yield Message(content=json.dumps({"status": "healthy", "metadata": AGENT_METADATA}))
 
 if __name__ == "__main__":
-    server.run() 
+    import uvicorn
+    uvicorn.run(server.app, host="0.0.0.0", port=8000) 
