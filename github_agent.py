@@ -341,5 +341,6 @@ async def health_check(
     yield Message(content=json.dumps({"status": "healthy", "metadata": AGENT_METADATA}))
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(server.app, host="0.0.0.0", port=8000) 
+    server = Server()
+    server.add_agent(github_agent)
+    server.run(host="0.0.0.0", port=8000) 
