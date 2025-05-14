@@ -341,5 +341,4 @@ async def health_check(
     yield Message(content=json.dumps({"status": "healthy", "metadata": AGENT_METADATA}))
 
 if __name__ == "__main__":
-    server = Server(github_agent)
     server.run(host="0.0.0.0", port=8000) 
