@@ -258,14 +258,20 @@ async def github_agent(
         for message in input:
             try:
                 # Parse the command from the message
-                command = message.content
-                if "list repos" in command.lower():
+                command = message.content.lower()
+                
+                # Handle natural language queries
+                if "how many issues" in command or "list issues" in command:
+                    yield Message(content="I'll help you list the issues. Please specify the repository name in the format: 'list issues in <repo_name>'")
+                    continue
+                
+                if "list repos" in command:
                     query = command.split("list repos")[-1].strip()
                     repos = agent.list_repositories(query)
                     yield Message(content="Listing repositories")
                     yield Message(content=json.dumps(repos, indent=2))
                 
-                elif "create issue" in command.lower():
+                elif "create issue" in command:
                     # Parse issue details from command
                     parts = command.split("create issue")[-1].strip().split(" in ")
                     if len(parts) != 2:
@@ -287,7 +293,7 @@ async def github_agent(
                         yield Message(content="Creating issue")
                         yield Message(content=json.dumps(result, indent=2))
                 
-                elif "review pr" in command.lower():
+                elif "review pr" in command:
                     # Parse PR details from command
                     parts = command.split("review pr")[-1].strip().split(" in ")
                     if len(parts) != 2:
@@ -304,7 +310,7 @@ async def github_agent(
                         yield Message(content="Reviewing pull request")
                         yield Message(content=json.dumps(result, indent=2))
                 
-                elif "analyze code" in command.lower():
+                elif "analyze code" in command:
                     # Parse analysis details from command
                     parts = command.split("analyze code")[-1].strip().split(" in ")
                     if len(parts) != 2:
@@ -322,11 +328,12 @@ async def github_agent(
                         yield Message(content=json.dumps(result, indent=2))
                 
                 else:
-                    yield Message(content="Unknown command. Available commands:\n" +
+                    yield Message(content="I can help you with GitHub operations. Here are the available commands:\n" +
                                       "- list repos [query]\n" +
                                       "- create issue <title> <body> in <repo>\n" +
                                       "- review pr <number> in <repo>\n" +
-                                      "- analyze code <path> in <repo>")
+                                      "- analyze code <path> in <repo>\n\n" +
+                                      "Please use one of these commands or ask me about issues in a specific repository.")
             
             except Exception as e:
                 yield Message(content=f"Error: {str(e)}")
