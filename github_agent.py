@@ -23,8 +23,8 @@ from acp_sdk.server import Context, RunYield, RunYieldResume, Server
 # Load environment variables
 load_dotenv()
 
-# Create server instance
-server = Server()
+# Create server instance with host binding
+server = Server(host="0.0.0.0", port=8000)
 
 # Define agent metadata
 AGENT_METADATA = {
