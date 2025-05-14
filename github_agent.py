@@ -262,60 +262,60 @@ async def github_agent(
                 
                 # Handle natural language queries
                 if "how many issues" in command or "list issues" in command:
-                    yield Message(content="I'll help you list the issues. Please specify the repository name in the format: 'list issues in <repo_name>'")
+                    yield RunYield(message=Message(content="I'll help you list the issues. Please specify the repository name in the format: 'list issues in <repo_name>'"))
                     continue
                 
                 if "list repos" in command:
                     query = command.split("list repos")[-1].strip()
                     repos = agent.list_repositories(query)
-                    yield Message(content=json.dumps({"action": "list_repositories", "result": repos}, indent=2))
+                    yield RunYield(message=Message(content=json.dumps({"action": "list_repositories", "result": repos}, indent=2)))
                 
                 elif "create issue" in command:
                     # Parse issue details from command
                     parts = command.split("create issue")[-1].strip().split(" in ")
                     if len(parts) != 2:
-                        yield Message(content=json.dumps({"error": "Invalid format. Use: create issue <title> <body> in <repo>"}))
+                        yield RunYield(message=Message(content=json.dumps({"error": "Invalid format. Use: create issue <title> <body> in <repo>"})))
                         continue
                     
                     issue_details = parts[0].strip().split(" ", 1)
                     if len(issue_details) != 2:
-                        yield Message(content=json.dumps({"error": "Invalid format. Use: create issue <title> <body> in <repo>"}))
+                        yield RunYield(message=Message(content=json.dumps({"error": "Invalid format. Use: create issue <title> <body> in <repo>"})))
                         continue
                     
                     title, body = issue_details
                     repo_name = parts[1].strip()
                     
                     result = agent.create_issue(repo_name, title, body)
-                    yield Message(content=json.dumps({"action": "create_issue", "result": result}))
+                    yield RunYield(message=Message(content=json.dumps({"action": "create_issue", "result": result})))
                 
                 elif "review pr" in command:
                     # Parse PR details from command
                     parts = command.split("review pr")[-1].strip().split(" in ")
                     if len(parts) != 2:
-                        yield Message(content=json.dumps({"error": "Invalid format. Use: review pr <number> in <repo>"}))
+                        yield RunYield(message=Message(content=json.dumps({"error": "Invalid format. Use: review pr <number> in <repo>"})))
                         continue
                     
                     pr_number = int(parts[0].strip())
                     repo_name = parts[1].strip()
                     
                     result = agent.review_pull_request(repo_name, pr_number)
-                    yield Message(content=json.dumps({"action": "review_pr", "result": result}))
+                    yield RunYield(message=Message(content=json.dumps({"action": "review_pr", "result": result})))
                 
                 elif "analyze code" in command:
                     # Parse analysis details from command
                     parts = command.split("analyze code")[-1].strip().split(" in ")
                     if len(parts) != 2:
-                        yield Message(content=json.dumps({"error": "Invalid format. Use: analyze code <path> in <repo>"}))
+                        yield RunYield(message=Message(content=json.dumps({"error": "Invalid format. Use: analyze code <path> in <repo>"})))
                         continue
                     
                     path = parts[0].strip()
                     repo_name = parts[1].strip()
                     
                     result = agent.analyze_code(repo_name, path)
-                    yield Message(content=json.dumps({"action": "analyze_code", "result": result}))
+                    yield RunYield(message=Message(content=json.dumps({"action": "analyze_code", "result": result})))
                 
                 else:
-                    yield Message(content=json.dumps({
+                    yield RunYield(message=Message(content=json.dumps({
                         "error": "Unknown command",
                         "available_commands": [
                             "list repos [query]",
@@ -323,19 +323,19 @@ async def github_agent(
                             "review pr <number> in <repo>",
                             "analyze code <path> in <repo>"
                         ]
-                    }))
+                    })))
             
             except Exception as e:
-                yield Message(content=json.dumps({"error": str(e)}))
+                yield RunYield(message=Message(content=json.dumps({"error": str(e)})))
     except Exception as e:
-        yield Message(content=json.dumps({"error": f"Fatal Error: {str(e)}"}))
+        yield RunYield(message=Message(content=json.dumps({"error": f"Fatal Error: {str(e)}"})))
 
 @server.agent(metadata=Metadata(ui={"type": "health"}))
 async def health_check(
     input: list[Message], context: Context
 ) -> AsyncGenerator[RunYield, RunYieldResume]:
     """Health check endpoint for container orchestration."""
-    yield Message(content=json.dumps({"status": "healthy", "metadata": AGENT_METADATA}))
+    yield RunYield(message=Message(content=json.dumps({"status": "healthy", "metadata": AGENT_METADATA})))
 
 if __name__ == "__main__":
     server.run(host="0.0.0.0", port=8000) 
