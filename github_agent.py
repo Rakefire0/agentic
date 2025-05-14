@@ -32,12 +32,18 @@ class GitHubAgent:
         """Initialize the GitHub agent with authentication."""
         self.github_token = github_token or os.getenv('GITHUB_AGENT_GITHUB_TOKEN')
         if not self.github_token:
-            raise ValueError("GitHub token not provided and not found in environment variables")
-        
-        self.github = Github(self.github_token)
+            self.github = None
+        else:
+            self.github = Github(self.github_token)
+
+    def _check_auth(self):
+        """Check if the agent is properly authenticated."""
+        if not self.github:
+            raise ValueError("GitHub token not provided. Please set GITHUB_AGENT_GITHUB_TOKEN environment variable.")
 
     def list_repositories(self, query: str = "") -> List[Dict[str, Any]]:
         """List repositories with optional search query."""
+        self._check_auth()
         repos = self.github.get_user().get_repos()
         if query:
             repos = [repo for repo in repos if query.lower() in repo.name.lower()]
@@ -45,6 +51,7 @@ class GitHubAgent:
 
     def create_issue(self, repo_name: str, title: str, body: str, labels: List[str] = None) -> Dict[str, Any]:
         """Create a new issue in a repository."""
+        self._check_auth()
         repo = self.github.get_user().get_repo(repo_name)
         issue = repo.create_issue(title=title, body=body, labels=labels or [])
         return {
@@ -55,6 +62,7 @@ class GitHubAgent:
 
     def review_pull_request(self, repo_name: str, pr_number: int) -> Dict[str, Any]:
         """Review a pull request and provide analysis."""
+        self._check_auth()
         repo = self.github.get_user().get_repo(repo_name)
         pr = repo.get_pull(pr_number)
         
@@ -80,6 +88,7 @@ class GitHubAgent:
 
     def analyze_code(self, repo_name: str, path: str = "") -> Dict[str, Any]:
         """Analyze code in a repository."""
+        self._check_auth()
         repo = self.github.get_user().get_repo(repo_name)
         contents = repo.get_contents(path)
         
@@ -101,74 +110,79 @@ async def github_agent(
     input: list[Message], context: Context
 ) -> AsyncGenerator[RunYield, RunYieldResume]:
     """GitHub integration agent that enables automated GitHub operations."""
-    agent = GitHubAgent()
-    
-    for message in input:
-        try:
-            # Parse the command from the message
-            command = message.content
-            if "list repos" in command.lower():
-                query = command.split("list repos")[-1].strip()
-                repos = agent.list_repositories(query)
-                yield {"thought": "Listing repositories"}
-                yield Message(content=json.dumps(repos, indent=2))
-            
-            elif "create issue" in command.lower():
-                # Parse issue details from command
-                parts = command.split("create issue")[-1].strip().split(" in ")
-                if len(parts) != 2:
-                    yield Message(content="Invalid format. Use: create issue <title> <body> in <repo>")
-                    continue
-                
-                issue_details = parts[0].strip().split(" ", 1)
-                if len(issue_details) != 2:
-                    yield Message(content="Invalid format. Use: create issue <title> <body> in <repo>")
-                    continue
-                
-                title, body = issue_details
-                repo_name = parts[1].strip()
-                
-                issue = agent.create_issue(repo_name, title, body)
-                yield {"thought": "Creating issue"}
-                yield Message(content=json.dumps(issue, indent=2))
-            
-            elif "review pr" in command.lower():
-                # Parse PR details from command
-                parts = command.split("review pr")[-1].strip().split(" in ")
-                if len(parts) != 2:
-                    yield Message(content="Invalid format. Use: review pr <number> in <repo>")
-                    continue
-                
-                pr_number = int(parts[0].strip())
-                repo_name = parts[1].strip()
-                
-                review = agent.review_pull_request(repo_name, pr_number)
-                yield {"thought": "Reviewing pull request"}
-                yield Message(content=json.dumps(review, indent=2))
-            
-            elif "analyze code" in command.lower():
-                # Parse analysis details from command
-                parts = command.split("analyze code")[-1].strip().split(" in ")
-                if len(parts) != 2:
-                    yield Message(content="Invalid format. Use: analyze code <path> in <repo>")
-                    continue
-                
-                path = parts[0].strip()
-                repo_name = parts[1].strip()
-                
-                analysis = agent.analyze_code(repo_name, path)
-                yield {"thought": "Analyzing code"}
-                yield Message(content=json.dumps(analysis, indent=2))
-            
-            else:
-                yield Message(content="Unknown command. Available commands:\n" +
-                                    "- list repos [query]\n" +
-                                    "- create issue <title> <body> in <repo>\n" +
-                                    "- review pr <number> in <repo>\n" +
-                                    "- analyze code <path> in <repo>")
+    try:
+        agent = GitHubAgent()
         
-        except Exception as e:
-            yield Message(content=f"Error: {str(e)}")
+        for message in input:
+            try:
+                # Parse the command from the message
+                command = message.content
+                if "list repos" in command.lower():
+                    query = command.split("list repos")[-1].strip()
+                    repos = agent.list_repositories(query)
+                    yield {"thought": "Listing repositories"}
+                    yield Message(content=json.dumps(repos, indent=2))
+                
+                elif "create issue" in command.lower():
+                    # Parse issue details from command
+                    parts = command.split("create issue")[-1].strip().split(" in ")
+                    if len(parts) != 2:
+                        yield Message(content="Invalid format. Use: create issue <title> <body> in <repo>")
+                        continue
+                    
+                    issue_details = parts[0].strip().split(" ", 1)
+                    if len(issue_details) != 2:
+                        yield Message(content="Invalid format. Use: create issue <title> <body> in <repo>")
+                        continue
+                    
+                    title, body = issue_details
+                    repo_name = parts[1].strip()
+                    
+                    issue = agent.create_issue(repo_name, title, body)
+                    yield {"thought": "Creating issue"}
+                    yield Message(content=json.dumps(issue, indent=2))
+                
+                elif "review pr" in command.lower():
+                    # Parse PR details from command
+                    parts = command.split("review pr")[-1].strip().split(" in ")
+                    if len(parts) != 2:
+                        yield Message(content="Invalid format. Use: review pr <number> in <repo>")
+                        continue
+                    
+                    pr_number = int(parts[0].strip())
+                    repo_name = parts[1].strip()
+                    
+                    review = agent.review_pull_request(repo_name, pr_number)
+                    yield {"thought": "Reviewing pull request"}
+                    yield Message(content=json.dumps(review, indent=2))
+                
+                elif "analyze code" in command.lower():
+                    # Parse analysis details from command
+                    parts = command.split("analyze code")[-1].strip().split(" in ")
+                    if len(parts) != 2:
+                        yield Message(content="Invalid format. Use: analyze code <path> in <repo>")
+                        continue
+                    
+                    path = parts[0].strip()
+                    repo_name = parts[1].strip()
+                    
+                    analysis = agent.analyze_code(repo_name, path)
+                    yield {"thought": "Analyzing code"}
+                    yield Message(content=json.dumps(analysis, indent=2))
+                
+                else:
+                    yield Message(content="Unknown command. Available commands:\n" +
+                                        "- list repos [query]\n" +
+                                        "- create issue <title> <body> in <repo>\n" +
+                                        "- review pr <number> in <repo>\n" +
+                                        "- analyze code <path> in <repo>")
+            
+            except ValueError as e:
+                yield Message(content=f"Authentication Error: {str(e)}")
+            except Exception as e:
+                yield Message(content=f"Error: {str(e)}")
+    except Exception as e:
+        yield Message(content=f"Fatal Error: {str(e)}")
 
 if __name__ == "__main__":
     server.run() 
