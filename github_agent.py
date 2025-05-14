@@ -34,6 +34,67 @@ class GitHubAgent:
         # Initialize GitHub client without token for public access
         self.github = Github()
 
+    def get_agent_info(self) -> Dict[str, Any]:
+        """Get agent information for BeeAI integration."""
+        return {
+            "name": "GitHub Agent",
+            "description": "A GitHub integration agent that enables automated GitHub operations",
+            "version": "1.0.0",
+            "type": "chat",
+            "capabilities": [
+                "list_repositories",
+                "create_issue",
+                "review_pull_request",
+                "analyze_code"
+            ],
+            "required_env_vars": ["GITHUB_AGENT_GITHUB_TOKEN"]
+        }
+
+    def handle_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle incoming requests from BeeAI."""
+        action = request.get("action")
+        params = request.get("params", {})
+
+        try:
+            if action == "list_repositories":
+                result = self.list_repositories(params.get("query", ""))
+                return {"status": "success", "data": result}
+            
+            elif action == "create_issue":
+                result = self.create_issue(
+                    params.get("repo_name"),
+                    params.get("title"),
+                    params.get("body"),
+                    params.get("labels")
+                )
+                return {"status": "success", "data": result}
+            
+            elif action == "review_pull_request":
+                result = self.review_pull_request(
+                    params.get("repo_name"),
+                    params.get("pr_number")
+                )
+                return {"status": "success", "data": result}
+            
+            elif action == "analyze_code":
+                result = self.analyze_code(
+                    params.get("repo_name"),
+                    params.get("path", "")
+                )
+                return {"status": "success", "data": result}
+            
+            else:
+                return {
+                    "status": "error",
+                    "message": f"Unknown action: {action}"
+                }
+        
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": str(e)
+            }
+
     def list_repositories(self, query: str = "") -> List[Dict[str, Any]]:
         """List repositories with optional search query."""
         try:

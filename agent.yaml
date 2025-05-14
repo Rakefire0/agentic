@@ -1,0 +1,19 @@
+name: GitHub Agent
+description: A GitHub integration agent that enables automated GitHub operations
+version: 1.0.0
+type: chat
+capabilities:
+  - list_repositories
+  - create_issue
+  - review_pull_request
+  - analyze_code
+required_env_vars:
+  - GITHUB_AGENT_GITHUB_TOKEN
+dependencies:
+  - acp-sdk>=0.8.1
+  - PyGithub>=2.1.1
+  - python-dotenv>=1.0.0
+  - langchain>=0.1.0
+  - pydantic>=2.0.0
+  - pydantic-settings>=2.0.0
+  - typing-extensions>=4.0.0 
