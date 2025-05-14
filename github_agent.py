@@ -329,6 +329,9 @@ async def github_agent(
                 yield RunYield(thought=json.dumps({"error": str(e)}))
     except Exception as e:
         yield RunYield(thought=json.dumps({"error": f"Fatal Error: {str(e)}"}))
+    
+    # Return None to indicate completion
+    return None
 
 @server.agent(metadata=Metadata(ui={"type": "health"}))
 async def health_check(
@@ -336,6 +339,7 @@ async def health_check(
 ) -> AsyncGenerator[RunYield, RunYieldResume]:
     """Health check endpoint for container orchestration."""
     yield RunYield(thought=json.dumps({"status": "healthy", "metadata": AGENT_METADATA}))
+    return None
 
 if __name__ == "__main__":
     server.run(host="0.0.0.0", port=8000) 
