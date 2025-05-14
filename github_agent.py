@@ -31,79 +31,83 @@ class GitHubAgent:
     def __init__(self, github_token: Optional[str] = None):
         """Initialize the GitHub agent with authentication."""
         self.github_token = github_token or os.getenv('GITHUB_AGENT_GITHUB_TOKEN')
-        if not self.github_token:
-            self.github = None
-        else:
-            self.github = Github(self.github_token)
-
-    def _check_auth(self):
-        """Check if the agent is properly authenticated."""
-        if not self.github:
-            raise ValueError("GitHub token not provided. Please set GITHUB_AGENT_GITHUB_TOKEN environment variable.")
+        # Initialize GitHub client without token for public access
+        self.github = Github()
 
     def list_repositories(self, query: str = "") -> List[Dict[str, Any]]:
         """List repositories with optional search query."""
-        self._check_auth()
-        repos = self.github.get_user().get_repos()
-        if query:
-            repos = [repo for repo in repos if query.lower() in repo.name.lower()]
-        return [{"name": repo.name, "url": repo.html_url} for repo in repos]
+        try:
+            # Search public repositories
+            repos = self.github.search_repositories(query=query)
+            return [{"name": repo.name, "url": repo.html_url} for repo in repos]
+        except Exception as e:
+            return [{"error": f"Error listing repositories: {str(e)}"}]
 
     def create_issue(self, repo_name: str, title: str, body: str, labels: List[str] = None) -> Dict[str, Any]:
         """Create a new issue in a repository."""
-        self._check_auth()
-        repo = self.github.get_user().get_repo(repo_name)
-        issue = repo.create_issue(title=title, body=body, labels=labels or [])
-        return {
-            "number": issue.number,
-            "title": issue.title,
-            "url": issue.html_url
-        }
+        if not self.github_token:
+            return {"error": "GitHub token required for creating issues"}
+        try:
+            repo = self.github.get_user().get_repo(repo_name)
+            issue = repo.create_issue(title=title, body=body, labels=labels or [])
+            return {
+                "number": issue.number,
+                "title": issue.title,
+                "url": issue.html_url
+            }
+        except Exception as e:
+            return {"error": f"Error creating issue: {str(e)}"}
 
     def review_pull_request(self, repo_name: str, pr_number: int) -> Dict[str, Any]:
         """Review a pull request and provide analysis."""
-        self._check_auth()
-        repo = self.github.get_user().get_repo(repo_name)
-        pr = repo.get_pull(pr_number)
-        
-        files_changed = pr.get_files()
-        changes = []
-        for file in files_changed:
-            changes.append({
-                "filename": file.filename,
-                "additions": file.additions,
-                "deletions": file.deletions,
-                "changes": file.changes
-            })
-        
-        comments = [comment.body for comment in pr.get_issue_comments()]
-        
-        return {
-            "title": pr.title,
-            "state": pr.state,
-            "changes": changes,
-            "comments": comments,
-            "url": pr.html_url
-        }
+        try:
+            # Get repository by full name (owner/repo)
+            repo = self.github.get_repo(repo_name)
+            pr = repo.get_pull(pr_number)
+            
+            files_changed = pr.get_files()
+            changes = []
+            for file in files_changed:
+                changes.append({
+                    "filename": file.filename,
+                    "additions": file.additions,
+                    "deletions": file.deletions,
+                    "changes": file.changes
+                })
+            
+            comments = [comment.body for comment in pr.get_issue_comments()]
+            
+            return {
+                "title": pr.title,
+                "state": pr.state,
+                "changes": changes,
+                "comments": comments,
+                "url": pr.html_url
+            }
+        except Exception as e:
+            return {"error": f"Error reviewing PR: {str(e)}"}
 
     def analyze_code(self, repo_name: str, path: str = "") -> Dict[str, Any]:
         """Analyze code in a repository."""
-        self._check_auth()
-        repo = self.github.get_user().get_repo(repo_name)
-        contents = repo.get_contents(path)
-        
-        if isinstance(contents, list):
-            return {
-                "type": "directory",
-                "items": [item.name for item in contents]
-            }
-        else:
-            return {
-                "type": "file",
-                "name": contents.name,
-                "size": contents.size,
-                "url": contents.download_url
-            }
+        try:
+            # Get repository by full name (owner/repo)
+            repo = self.github.get_repo(repo_name)
+            contents = repo.get_contents(path)
+            
+            if isinstance(contents, list):
+                return {
+                    "type": "directory",
+                    "items": [item.name for item in contents]
+                }
+            else:
+                return {
+                    "type": "file",
+                    "name": contents.name,
+                    "size": contents.size,
+                    "url": contents.download_url
+                }
+        except Exception as e:
+            return {"error": f"Error analyzing code: {str(e)}"}
 
 @server.agent(metadata=Metadata(ui={"type": "chat"}))
 async def github_agent(
@@ -138,9 +142,12 @@ async def github_agent(
                     title, body = issue_details
                     repo_name = parts[1].strip()
                     
-                    issue = agent.create_issue(repo_name, title, body)
-                    yield {"thought": "Creating issue"}
-                    yield Message(content=json.dumps(issue, indent=2))
+                    result = agent.create_issue(repo_name, title, body)
+                    if "error" in result:
+                        yield Message(content=result["error"])
+                    else:
+                        yield {"thought": "Creating issue"}
+                        yield Message(content=json.dumps(result, indent=2))
                 
                 elif "review pr" in command.lower():
                     # Parse PR details from command
@@ -152,9 +159,12 @@ async def github_agent(
                     pr_number = int(parts[0].strip())
                     repo_name = parts[1].strip()
                     
-                    review = agent.review_pull_request(repo_name, pr_number)
-                    yield {"thought": "Reviewing pull request"}
-                    yield Message(content=json.dumps(review, indent=2))
+                    result = agent.review_pull_request(repo_name, pr_number)
+                    if "error" in result:
+                        yield Message(content=result["error"])
+                    else:
+                        yield {"thought": "Reviewing pull request"}
+                        yield Message(content=json.dumps(result, indent=2))
                 
                 elif "analyze code" in command.lower():
                     # Parse analysis details from command
@@ -166,9 +176,12 @@ async def github_agent(
                     path = parts[0].strip()
                     repo_name = parts[1].strip()
                     
-                    analysis = agent.analyze_code(repo_name, path)
-                    yield {"thought": "Analyzing code"}
-                    yield Message(content=json.dumps(analysis, indent=2))
+                    result = agent.analyze_code(repo_name, path)
+                    if "error" in result:
+                        yield Message(content=result["error"])
+                    else:
+                        yield {"thought": "Analyzing code"}
+                        yield Message(content=json.dumps(result, indent=2))
                 
                 else:
                     yield Message(content="Unknown command. Available commands:\n" +
@@ -177,8 +190,6 @@ async def github_agent(
                                         "- review pr <number> in <repo>\n" +
                                         "- analyze code <path> in <repo>")
             
-            except ValueError as e:
-                yield Message(content=f"Authentication Error: {str(e)}")
             except Exception as e:
                 yield Message(content=f"Error: {str(e)}")
     except Exception as e:
