@@ -26,6 +26,21 @@ load_dotenv()
 # Create server instance
 server = Server()
 
+# Define agent metadata
+AGENT_METADATA = {
+    "name": "GitHub Agent",
+    "description": "A GitHub integration agent that enables automated GitHub operations",
+    "version": "1.0.0",
+    "type": "chat",
+    "capabilities": [
+        "list_repositories",
+        "create_issue",
+        "review_pull_request",
+        "analyze_code"
+    ],
+    "required_env_vars": ["GITHUB_AGENT_GITHUB_TOKEN"]
+}
+
 class GitHubAgent:
     def __init__(self, github_token: Optional[str] = None):
         """Initialize the GitHub agent with authentication."""
@@ -317,6 +332,11 @@ async def github_agent(
                 yield Message(content=f"Error: {str(e)}")
     except Exception as e:
         yield Message(content=f"Fatal Error: {str(e)}")
+
+@server.get("/health")
+async def health_check():
+    """Health check endpoint for container orchestration."""
+    return {"status": "healthy", "metadata": AGENT_METADATA}
 
 if __name__ == "__main__":
     server.run() 

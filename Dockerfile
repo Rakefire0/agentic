@@ -24,5 +24,5 @@ COPY . .
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 
-# Command to run the agent
+# Run the agent
 CMD ["python", "github_agent.py"] 
