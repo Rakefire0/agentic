@@ -262,7 +262,7 @@ async def github_agent(
                 if "list repos" in command.lower():
                     query = command.split("list repos")[-1].strip()
                     repos = agent.list_repositories(query)
-                    yield {"thought": "Listing repositories"}
+                    yield Message(content="Listing repositories")
                     yield Message(content=json.dumps(repos, indent=2))
                 
                 elif "create issue" in command.lower():
@@ -284,7 +284,7 @@ async def github_agent(
                     if "error" in result:
                         yield Message(content=result["error"])
                     else:
-                        yield {"thought": "Creating issue"}
+                        yield Message(content="Creating issue")
                         yield Message(content=json.dumps(result, indent=2))
                 
                 elif "review pr" in command.lower():
@@ -301,7 +301,7 @@ async def github_agent(
                     if "error" in result:
                         yield Message(content=result["error"])
                     else:
-                        yield {"thought": "Reviewing pull request"}
+                        yield Message(content="Reviewing pull request")
                         yield Message(content=json.dumps(result, indent=2))
                 
                 elif "analyze code" in command.lower():
@@ -318,7 +318,7 @@ async def github_agent(
                     if "error" in result:
                         yield Message(content=result["error"])
                     else:
-                        yield {"thought": "Analyzing code"}
+                        yield Message(content="Analyzing code")
                         yield Message(content=json.dumps(result, indent=2))
                 
                 else:
